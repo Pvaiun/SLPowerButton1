@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Power Button Mock-up</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #12122a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* ── Card ───────────────────────────────── */
+    .card {
+      background: #1a1a38;
+      border: 1px solid #2e2e58;
+      border-radius: 20px;
+      padding: 28px 32px 32px;
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .card-title {
+      color: #7070a8;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* ── Sliders ────────────────────────────── */
+    .sliders {
+      width: 100%;
+      display: flex;
+      gap: 16px;
+    }
+    .slider-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .slider-group label {
+      color: #6060a0;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    .slider-group input[type=range] {
+      width: 100%;
+      accent-color: #7f5af0;
+      cursor: pointer;
+    }
+    .slider-group .val {
+      color: #a89bff;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    /* ── Charge pips ────────────────────────── */
+    .pips {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* pip base — shape variants applied via class */
+    .pip {
+      width: 14px;
+      height: 14px;
+      background: #23234a;
+      border: 1px solid #33336a;
+      transition: background 0.2s, box-shadow 0.2s, border-color 0.15s;
+    }
+    .pip.shape-square   { border-radius: 3px; }
+    .pip.shape-circle   { border-radius: 50%; }
+    .pip.shape-diamond  { border-radius: 2px; transform: rotate(45deg); width: 12px; height: 12px; }
+    .pip.shape-bar      { border-radius: 2px; width: 18px; height: 8px; align-self: center; }
+
+    .pip.filled {
+      background: #7f5af0;
+      border-color: #a78bfa;
+      box-shadow: 0 0 7px #7f5af0bb;
+    }
+    .pip.recharging {
+      border-color: #7f5af0;
+      box-shadow: 0 0 4px #7f5af077;
+      /* partial fill via inline style --pct */
+      background: linear-gradient(to right, #7f5af0 var(--pct, 0%), #23234a var(--pct, 0%));
+    }
+    .pip.shape-bar.recharging {
+      background: linear-gradient(to right, #7f5af0 var(--pct, 0%), #23234a var(--pct, 0%));
+    }
+
+    /* ── Circle button ──────────────────────── */
+    .btn-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .btn-circle {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: #0e0e24;
+      border: 3px solid #3a3070;
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.3s;
+    }
+
+    /* glow ring outside */
+    .btn-wrap::before {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      pointer-events: none;
+      box-shadow: none;
+      transition: box-shadow 0.08s ease-out;
+    }
+    .state-recharging .btn-wrap::before {
+      box-shadow: 0 0 16px 4px #7f5af055;
+    }
+    .state-full .btn-wrap::before {
+      box-shadow: 0 0 24px 6px #7f5af088;
+    }
+    .state-full .btn-circle {
+      border-color: #7f5af0;
+    }
+    .state-empty .btn-wrap::before {
+      box-shadow: none;
+    }
+    .state-empty .btn-circle {
+      border-color: #1e1a3a;
+      filter: brightness(0.5) saturate(0.2);
+    }
+
+    /* Charge count in circle center */
+    .btn-count {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 8px #0008;
+      pointer-events: none;
+      z-index: 2;
+      transition: opacity 0.1s;
+    }
+
+    /* The fill — rises from bottom, flat top edge, no liquid effect */
+    .btn-fill {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: var(--fill, 0%);
+      /* no CSS transition — rAF drives smooth fill-up, snaps instantly on reset */
+      background: linear-gradient(to bottom, #6b46e0 0%, #4a2eaa 100%);
+    }
+
+    /* ── Labels ─────────────────────────────── */
+    .power-label {
+      color: #9090c8;
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: -4px;
+    }
+
+    .keybind-pill {
+      background: #1e1e3e;
+      border: 1px solid #3a3a6a;
+      border-radius: 6px;
+      color: #7070a8;
+      font-size: 12px;
+      padding: 2px 10px;
+      letter-spacing: 1px;
+    }
+
+    .status-text {
+      color: #5555888;
+      font-size: 13px;
+      color: #6060a0;
+    }
+    .status-text strong {
+      color: #a89bff;
+    }
+
+    /* ── Divider ─────────────────────────────── */
+    .divider {
+      width: 100%;
+      border: none;
+      border-top: 1px solid #252548;
+    }
+
+    /* ── Pip shape selector ──────────────────── */
+    .section-label {
+      color: #7070a8;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      align-self: center;
+    }
+
+    .shape-btns {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+    .shape-btn {
+      flex: 1;
+      padding: 10px 0 8px;
+      border-radius: 10px;
+      background: #1e1e3e;
+      border: 1px solid #2e2e58;
+      color: #6060a0;
+      cursor: pointer;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .shape-btn:hover {
+      border-color: #5a4aaa;
+      color: #a89bff;
+    }
+    .shape-btn.active {
+      border-color: #7f5af0;
+      background: #261e4e;
+      color: #c4b5fd;
+    }
+
+    /* Mini pip previews inside shape buttons */
+    .mini-pips {
+      display: flex;
+      gap: 3px;
+      align-items: center;
+      height: 12px;
+    }
+    .mini-pip {
+      background: currentColor;
+      opacity: 0.7;
+    }
+    .mini-pip.sq  { width: 7px; height: 7px; border-radius: 2px; }
+    .mini-pip.ci  { width: 7px; height: 7px; border-radius: 50%; }
+    .mini-pip.di  { width: 6px; height: 6px; border-radius: 1px; transform: rotate(45deg); }
+    .mini-pip.ba  { width: 9px; height: 5px; border-radius: 1px; }
+
+  </style>
+</head>
+<body>
+
+<div class="ability-slot" id="abilitySlot">
+  <div class="card">
+    <div class="card-title">Ability Charge UI</div>
+
+    <!-- Sliders -->
+    <div class="sliders">
+      <div class="slider-group">
+        <label>Max charges</label>
+        <input type="range" id="maxSlider" min="1" max="6" value="3"
+               oninput="setMax(+this.value)">
+        <span class="val" id="maxVal">3</span>
+      </div>
+      <div class="slider-group">
+        <label>Recharge speed</label>
+        <input type="range" id="rateSlider" min="1" max="10" value="4"
+               oninput="setRate(+this.value)">
+        <span class="val" id="rateVal">4</span>
+      </div>
+    </div>
+
+    <!-- Pips -->
+    <div class="pips" id="pipsEl"></div>
+
+    <!-- Circle button -->
+    <div class="btn-wrap" id="btnWrap" onclick="useCharge()">
+      <div class="btn-circle">
+        <div class="btn-fill" id="btnFill"></div>
+        <div class="btn-count" id="btnCount">3</div>
+      </div>
+    </div>
+
+    <div class="power-label">Power</div>
+    <div class="keybind-pill">Q</div>
+    <div class="status-text" id="statusText">3 / 3 charges</div>
+
+    <hr class="divider">
+
+    <div class="section-label">Pip Shape</div>
+    <div class="shape-btns">
+      <button class="shape-btn active" onclick="setShape('square', this)">
+        <div class="mini-pips">
+          <div class="mini-pip sq"></div><div class="mini-pip sq"></div>
+          <div class="mini-pip sq"></div><div class="mini-pip sq"></div>
+        </div>
+        square
+      </button>
+      <button class="shape-btn" onclick="setShape('circle', this)">
+        <div class="mini-pips">
+          <div class="mini-pip ci"></div><div class="mini-pip ci"></div>
+          <div class="mini-pip ci"></div>
+        </div>
+        circle
+      </button>
+      <button class="shape-btn" onclick="setShape('diamond', this)">
+        <div class="mini-pips">
+          <div class="mini-pip di"></div><div class="mini-pip di"></div>
+          <div class="mini-pip di"></div><div class="mini-pip di"></div>
+        </div>
+        diamond
+      </button>
+      <button class="shape-btn" onclick="setShape('bar', this)">
+        <div class="mini-pips">
+          <div class="mini-pip ba"></div><div class="mini-pip ba"></div>
+          <div class="mini-pip ba"></div>
+        </div>
+        bar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let maxCharges    = 3;
+  let rechargeTime  = 4;
+  let charges       = 3;
+  let rechargeProgress = 0;
+  let lastTime      = null;
+  let pipShape      = 'square';
+
+  const slot       = document.getElementById('abilitySlot');
+  const btnFill    = document.getElementById('btnFill');
+  const btnCount   = document.getElementById('btnCount');
+  const pipsEl     = document.getElementById('pipsEl');
+  const statusEl   = document.getElementById('statusText');
+
+  function buildPips() {
+    pipsEl.innerHTML = '';
+    for (let i = 0; i < maxCharges; i++) {
+      const d = document.createElement('div');
+      d.className = `pip shape-${pipShape}`;
+      pipsEl.appendChild(d);
+    }
+  }
+
+  function render() {
+    // Fill height: progress toward the NEXT single charge (0→100% per charge)
+    const fillPct = charges >= maxCharges ? 100 : rechargeProgress * 100;
+    btnFill.style.setProperty('--fill', fillPct.toFixed(2) + '%');
+
+    // Charge count (hidden at zero)
+    btnCount.textContent = charges;
+    btnCount.style.opacity = charges === 0 ? '0' : '1';
+
+    // Status text
+    if (charges >= maxCharges) {
+      statusEl.innerHTML = `<strong>${charges} / ${maxCharges}</strong> charges`;
+    } else {
+      const secsLeft = (rechargeTime * (1 - rechargeProgress)).toFixed(1);
+      statusEl.innerHTML =
+        `${charges} / ${maxCharges} charges — next in <strong>${secsLeft}s</strong>`;
+    }
+
+    // Pips
+    const pips = pipsEl.querySelectorAll('.pip');
+    pips.forEach((p, i) => {
+      p.className = `pip shape-${pipShape}`;
+      p.style.removeProperty('--pct');
+      if (i < charges) {
+        p.classList.add('filled');
+      } else if (i === charges && charges < maxCharges) {
+        p.classList.add('recharging');
+        p.style.setProperty('--pct', (rechargeProgress * 100).toFixed(1) + '%');
+      }
+    });
+
+    // State classes
+    slot.className = 'ability-slot ' + (
+      charges >= maxCharges ? 'state-full' :
+      charges === 0         ? 'state-empty' :
+                              'state-recharging'
+    );
+  }
+
+  function tick(ts) {
+    if (!lastTime) lastTime = ts;
+    const dt = (ts - lastTime) / 1000;
+    lastTime = ts;
+
+    if (charges < maxCharges) {
+      rechargeProgress += dt / rechargeTime;
+      if (rechargeProgress >= 1) {
+        charges++;
+        rechargeProgress = charges < maxCharges ? rechargeProgress - 1 : 0;
+      }
+    } else {
+      rechargeProgress = 0;
+    }
+
+    render();
+    requestAnimationFrame(tick);
+  }
+
+  function useCharge() {
+    if (charges <= 0) return;
+    charges--;
+    render();
+  }
+
+  function setMax(v) {
+    maxCharges = v;
+    charges = Math.min(charges, maxCharges);
+    document.getElementById('maxVal').textContent = v;
+    buildPips();
+    render();
+  }
+
+  function setRate(v) {
+    rechargeTime = v;
+    document.getElementById('rateVal').textContent = v;
+  }
+
+  function setShape(shape, btn) {
+    pipShape = shape;
+    document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildPips();
+    render();
+  }
+
+  buildPips();
+  render();
+  requestAnimationFrame(tick);
+</script>
+</body>
+</html>
